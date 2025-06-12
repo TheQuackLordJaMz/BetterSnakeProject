@@ -1,121 +1,95 @@
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 
-// This class controls the snake behavior in a Snake game.
 public class Snake : MonoBehaviour
 {
-    // Reference to the Rigidbody2D component attached to the snake
-    [SerializeField] private Rigidbody2D rb;
+    public float moveSpeed = 5f;            // Snake speed: number of steps per second
+    public GameObject bodyPrefab;           // Prefab for snake body segments
+    private Vector2 direction = Vector2.right; // Initial movement direction
+    private List<Transform> bodyParts = new List<Transform>(); // Tracks all body segments
 
-    // Current movement direction of the snake, initialized to move right
-    private Vector2 _direction = Vector2.right;
-
-    // List of all segments of the snake, with the head at index 0
-    [SerializeField] private List<Transform> _segments;
-
-    // Prefab to instantiate new snake body segments
-    [SerializeField] private Transform segmentPrefab;
-
-    // Initialization function called once at the start
-    private void Start()
+    void Start()
     {
-        // Get the Rigidbody2D component on the GameObject this script is attached to
-        rb = GetComponent<Rigidbody2D>();
-
-        // Initialize the segments list and add the snake head as the first segment
-        _segments = new List<Transform>();
-        _segments.Add(this.transform);
+        // Add the head (this object) as the first segment
+        bodyParts.Add(transform);
+        // Start the coroutine that moves the snake in discrete steps
+        StartCoroutine(MoveRoutine());
     }
 
-    // Called every frame, used for handling input
-    private void Update()
+    void Update()
     {
-        MoveInput(); // Check for user input to update movement direction
-    }
-
-    // Called at fixed intervals, used for physics-related updates
-    private void FixedUpdate()
-    {
-        // Move each segment to the position of the segment in front of it
-        for (int i = _segments.Count - 1; i > 0; i--)
-        {
-            _segments[i].position = _segments[i - 1].position;
-        }
-
-        // Move the snake head in the current direction by 1 unit
-        this.transform.position = new Vector3(
-            Mathf.Round(this.transform.position.x) + _direction.x,
-            Mathf.Round(this.transform.position.y) + _direction.y,
-            0.0f); // Keep z at 0 to stay in 2D
-    }
-
-    // Handles keyboard input to control the snake's direction
-    void MoveInput()
-    {
-        // Update direction based on WASD key press
-        if (Input.GetKeyDown(KeyCode.W))
-        {
-            _direction = Vector2.up;
-        }
-        else if (Input.GetKeyDown(KeyCode.A))
-        {
-            _direction = Vector2.left;
-        }
-        else if (Input.GetKeyDown(KeyCode.S))
-        {
-            _direction = Vector2.down;
-        }
-        else if (Input.GetKeyDown(KeyCode.D))
-        {
-            _direction = Vector2.right;
-        }
-    }
-
-    // Adds a new segment to the snake's tail
-    void Grow()
-    {
-        // Instantiate a new segment at the position of the last segment
-        Transform segment = Instantiate(this.segmentPrefab);
-        segment.position = _segments[_segments.Count - 1].position;
-
-        // Add the new segment to the list
-        _segments.Add(segment);
-    }
-
-    // Resets the snake to its original state (only the head, no body segments)
-    void ResetState()
-    {
-        // Loop through all segments *except the head* (starting at index 1)
-        for (int i = 1; i < _segments.Count; i++)
-        {
-            // Destroy each body segment's GameObject to remove them from the scene
-            Destroy(_segments[i].gameObject);
-        }
-
-        // Clear the list of segments
-        _segments.Clear();
-
-        // Add the head (this.transform) back as the only segment in the list
-        _segments.Add(this.transform);
-
-        //Reset players pos
-        this.transform.position = Vector3.zero;
-
+        // Read user input once per frame and update direction accordingly
+        if (Input.GetKeyDown(KeyCode.W) && direction != Vector2.down)
+            direction = Vector2.up;
+        if (Input.GetKeyDown(KeyCode.S) && direction != Vector2.up)
+            direction = Vector2.down;
+        if (Input.GetKeyDown(KeyCode.A) && direction != Vector2.right)
+            direction = Vector2.left;
+        if (Input.GetKeyDown(KeyCode.D) && direction != Vector2.left)
+            direction = Vector2.right;
     }
 
 
-
-    // Detects collisions with trigger colliders
-    private void OnTriggerEnter2D(Collider2D other)
+    public List<Vector2> GetSnakePositions()
     {
-        // If the snake collides with an object tagged "Food", grow the snake
+        List<Vector2> positions = new List<Vector2>();
+        foreach (Transform part in bodyParts)
+        {
+            positions.Add(new Vector2(
+                Mathf.Round(part.position.x),
+                Mathf.Round(part.position.y)
+            ));
+        }
+        return positions;
+    }
+
+
+    IEnumerator MoveRoutine()
+    {
+        // Infinite loop to keep the snake moving
+        while (true)
+        {
+            // Store head’s current position
+            Vector3 prevPos = transform.position;
+
+            // Move head one grid unit in the current direction
+            transform.position = new Vector3(
+                Mathf.Round(prevPos.x) + direction.x,
+                Mathf.Round(prevPos.y) + direction.y,
+                0f
+            );
+
+            // Update each body part to follow the previous part
+            for (int i = 1; i < bodyParts.Count; i++)
+            {
+                Vector3 temp = bodyParts[i].position;
+                bodyParts[i].position = prevPos;
+                prevPos = temp;
+            }
+
+            // Pause before the next move. 1f / moveSpeed means 'steps per second' :contentReference[oaicite:1]{index=1}
+            yield return new WaitForSeconds(1f / moveSpeed);
+        }
+    }
+
+    //COLLISONS
+    void OnTriggerEnter2D(Collider2D other)
+    {
         if (other.tag == "Food")
         {
             Grow();
+            Destroy(other.gameObject);
+            FindAnyObjectByType<FoodSpawner>().SpawnFood();
         }
-        else if (other.tag == "Obstacle")
-        {
-            ResetState();
-        }
+    }
+
+    public void Grow()
+    {
+        // Instantiate a new body segment at the tail's position
+        GameObject newPart = Instantiate(bodyPrefab);
+        newPart.transform.position = bodyParts[bodyParts.Count - 1].position;
+        // Add the new segment to the list so it follows correctly
+        bodyParts.Add(newPart.transform);
     }
 }
