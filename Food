@@ -1,22 +1,37 @@
 using UnityEngine;
+using System.Collections.Generic;
 
-public class Food : MonoBehaviour
+public class FoodSpawner : MonoBehaviour
 {
-    public BoxCollider2D gridArea;
+    public GameObject foodPrefab;
+    public float xBounds = 24f;
+    public float yBounds = 12f;
+    public float padding = 0.5f;
+    private Snake snake;
 
-
-    private void Start()
+    void Start()
     {
-        RandomizePosition();
+        snake = FindAnyObjectByType<Snake>();
+        SpawnFood();
     }
 
-    //spawn food at random positions within the bounds of the gridArea
-    void RandomizePosition() 
+    public void SpawnFood()
     {
-        Bounds bounds = this.gridArea.bounds;
-        float x = Random.Range(bounds.min.x, bounds.max.x);
-        float y = Random.Range(bounds.min.y, bounds.max.y);
-        this.transform.position = new Vector3(Mathf.Round(x), Mathf.Round(y), 0.0f);
-    }
+        List<Vector2> occupied = snake.GetSnakePositions();
+        Vector2 spawnPos;
+        int tries = 0, maxTries = 100;
 
+        do
+        {
+            float x = Random.Range(-xBounds + padding, xBounds - padding);
+            float y = Random.Range(-yBounds + padding, yBounds - padding);
+            x = Mathf.Round(x);
+            y = Mathf.Round(y);
+            spawnPos = new Vector2(x, y);
+            tries++;
+        }
+        while (occupied.Contains(spawnPos) && tries < maxTries);
+
+        Instantiate(foodPrefab, spawnPos, Quaternion.identity);
+    }
 }
