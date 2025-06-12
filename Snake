@@ -1,0 +1,46 @@
+using UnityEngine;
+
+public class Snake : MonoBehaviour
+{
+    [SerializeField] private Rigidbody2D rb;
+    private Vector2 _direction = Vector2.right; //default direction 
+    private void Start()
+    {
+        rb = GetComponent<Rigidbody2D>();
+    }
+
+    private void Update()
+    {
+        MoveInput(); //call the input function
+    }
+
+    private void FixedUpdate()
+    {
+        //makes the object "snap" to a grid by rounding its current position to a whole number, then moves it one unit in a given direction.
+        this.transform.position = new Vector3(
+            Mathf.Round(this.transform.position.x) + _direction.x,
+            Mathf.Round(this.transform.position.y) + _direction.y,
+            0.0f);
+    }
+
+    //CONTROL INPUT
+    void MoveInput() 
+    {
+        if (Input.GetKeyDown(KeyCode.W))
+        {
+            _direction = Vector2.up;
+        }
+        else if (Input.GetKeyDown(KeyCode.A))
+        {
+            _direction = Vector2.left;
+        }
+        else if (Input.GetKeyDown(KeyCode.S))
+        {
+            _direction = Vector2.down;
+        }
+        else if (Input.GetKeyDown(KeyCode.D))
+        {
+            _direction = Vector2.right;
+        }
+    }
+}
